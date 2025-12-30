@@ -71,10 +71,17 @@ export interface LevelDefinition {
   description: string; // 说明
 }
 
+export interface ExternalWord {
+  text: string;
+  levelId: string;
+}
+
 export interface ExternalSegmentation {
   text: string;
   traditionalWords?: string[];
   mgeoWords?: string[];
+  traditionalDetailed?: ExternalWord[];
+  mgeoDetailed?: ExternalWord[];
 }
 
 export interface ApiEndpointConfig {

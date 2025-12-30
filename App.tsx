@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
-/* Added AlertCircle to lucide-react imports to fix the error on line 470 */
-import { Upload, Send, Download, Layers, ShieldCheck, Zap, FileText, ChevronRight, BarChart2, SplitSquareHorizontal, Info, List, TrendingUp, PieChart, Settings2, Sliders, BrainCircuit, Sparkles, MapPin, Edit3, Plus, X, RotateCcw, Link, Globe, Code2, Cpu, Activity, Server, Hash, Type as LucideType, Bookmark, FileSearch, Settings, AlertCircle } from 'lucide-react';
-import { BatchComparisonData, ComparisonMode, ComparisonData, EvaluationWeights, AIConfig, GranularityLevel, LevelDefinition, ExternalSegmentation, ApiEndpointConfig } from './types';
+import React, { useState, useMemo, useRef } from 'react';
+/* Added FileUp, Download for dictionary import/export */
+import { Upload, Send, Download, Layers, ShieldCheck, Zap, FileText, ChevronRight, BarChart2, SplitSquareHorizontal, Info, List, TrendingUp, PieChart, Settings2, Sliders, BrainCircuit, Sparkles, MapPin, Edit3, Plus, X, RotateCcw, Link, Globe, Code2, Cpu, Activity, Server, Hash, Type as LucideType, Bookmark, FileSearch, Settings, AlertCircle, FileUp } from 'lucide-react';
+import { BatchComparisonData, ComparisonMode, ComparisonData, EvaluationWeights, AIConfig, GranularityLevel, LevelDefinition, ExternalSegmentation, ApiEndpointConfig, ExternalWord } from './types';
 import { evaluateBatchSegmentation } from './services/geminiService';
 import WordChip from './components/WordChip';
 import ScoringCard from './components/ScoringCard';
@@ -19,44 +19,46 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('interfaces');
   
+  const dictFileInputRef = useRef<HTMLInputElement>(null);
+
   const default18Level: LevelDefinition[] = [
-    { id: 'L1', name: '国家 (Country)', alias: '国', pos: 'ns', example: '中国', description: '主权国家名称' },
-    { id: 'L2', name: '省/直辖市 (Province)', alias: '省', pos: 'ns', example: '广东省', description: '一级行政区' },
-    { id: 'L3', name: '城市 (City)', alias: '市', pos: 'ns', example: '深圳市', description: '地级行政单位' },
-    { id: 'L4', name: '区县 (District)', alias: '区', pos: 'ns', example: '南山区', description: '县级行政单位' },
-    { id: 'L5', name: '乡镇街道 (Township)', alias: '镇', pos: 'ns', example: '粤海街道', description: '乡级行政单位' },
-    { id: 'L6', name: '路/街 (Road)', alias: '路', pos: 'n', example: '深南大道', description: '城市道路名称' },
-    { id: 'L7', name: '门牌号 (Number)', alias: '号', pos: 'm', example: '100号', description: '道路门牌' },
-    { id: 'L8', name: '建筑物 (Building)', alias: '栋', pos: 'n', example: '腾讯大厦', description: '独立建筑物名称' },
-    { id: 'L9', name: '楼栋 (Block)', alias: '幢', pos: 'm', example: 'A座', description: '建筑物内部区块' },
-    { id: 'L10', name: '单元 (Unit)', alias: '单元', pos: 'm', example: '2单元', description: '楼栋单元号' },
-    { id: 'L11', name: '层 (Floor)', alias: '层', pos: 'm', example: '18层', description: '楼层高度' },
-    { id: 'L12', name: '户/房号 (Room)', alias: '室', pos: 'm', example: '1801室', description: '最小房间编号' },
-    { id: 'L13', name: '方位词 (Direction)', alias: '位', pos: 'f', example: '旁边', description: '相对地理方位' },
-    { id: 'L14', name: '距离 (Distance)', alias: '距', pos: 'm', example: '200米', description: '距离描述' },
-    { id: 'L15', name: '兴趣点 (POI)', alias: 'POI', pos: 'n', example: '世界之窗', description: '地标、商铺等点状地名' },
-    { id: 'L16', name: '附属设施 (Facility)', alias: '施', pos: 'n', example: '停车场', description: '建筑物附属设施' },
-    { id: 'L17', name: '交叉路口 (Intersection)', alias: '叉', pos: 'n', example: '路口', description: '两条路交汇处' },
-    { id: 'L18', name: '区域描述 (Area)', alias: '域', pos: 'n', example: '核心区', description: '非标准行政划定的区域' }
+    { id: '1', name: '国家 (Country)', alias: '国', pos: 'ns', example: '中国', description: '主权国家名称' },
+    { id: '2', name: '省/直辖市 (Province)', alias: '省', pos: 'ns', example: '广东省', description: '一级行政区' },
+    { id: '3', name: '城市 (City)', alias: '市', pos: 'ns', example: '深圳市', description: '地级行政单位' },
+    { id: '4', name: '区县 (District)', alias: '区', pos: 'ns', example: '南山区', description: '县级行政单位' },
+    { id: '5', name: '乡镇街道 (Township)', alias: '镇', pos: 'ns', example: '粤海街道', description: '乡级行政单位' },
+    { id: '6', name: '路/街 (Road)', alias: '路', pos: 'n', example: '深南大道', description: '城市道路名称' },
+    { id: '7', name: '门牌号 (Number)', alias: '号', pos: 'm', example: '100号', description: '道路门牌' },
+    { id: '8', name: '建筑物 (Building)', alias: '栋', pos: 'n', example: '腾讯大厦', description: '独立建筑物名称' },
+    { id: '9', name: '楼栋 (Block)', alias: '幢', pos: 'm', example: 'A座', description: '建筑物内部区块' },
+    { id: '10', name: '单元 (Unit)', alias: '单元', pos: 'm', example: '2单元', description: '楼栋单元号' },
+    { id: '11', name: '层 (Floor)', alias: '层', pos: 'm', example: '18层', description: '楼层高度' },
+    { id: '12', name: '户/房号 (Room)', alias: '室', pos: 'm', example: '1801室', description: '最小房间编号' },
+    { id: '13', name: '方位词 (Direction)', alias: '位', pos: 'f', example: '旁边', description: '相对地理方位' },
+    { id: '14', name: '距离 (Distance)', alias: '距', pos: 'm', example: '200米', description: '距离描述' },
+    { id: '15', name: '兴趣点 (POI)', alias: 'POI', pos: 'n', example: '世界之窗', description: '地标、商铺等点状地名' },
+    { id: '16', name: '附属设施 (Facility)', alias: '施', pos: 'n', example: '停车场', description: '建筑物附属设施' },
+    { id: '17', name: '交叉路口 (Intersection)', alias: '叉', pos: 'n', example: '路口', description: '两条路交汇处' },
+    { id: '18', name: '区域描述 (Area)', alias: '域', pos: 'n', example: '核心区', description: '非标准行政划定的区域' }
   ];
 
   const default24Level: LevelDefinition[] = [
     ...default18Level,
-    { id: 'L19', name: '商圈 (Business District)', alias: '圈', pos: 'n', example: '东门商圈', description: '商业聚集区域' },
-    { id: 'L20', name: '社区 (Community)', alias: '社', pos: 'n', example: '南园社区', description: '基层群众性自治组织区域' },
-    { id: 'L21', name: '地标 (Landmark)', alias: '标', pos: 'n', example: '东方明珠', description: '具有标志性的地理实体' },
-    { id: 'L22', name: 'POI分类 (POI Category)', alias: '类', pos: 'n', example: '酒店', description: 'POI的类别标签' },
-    { id: 'L23', name: '子区域 (Sub-area)', alias: '子', pos: 'n', example: '北区', description: '大区域内部的子划分' },
-    { id: 'L24', name: '邮编 (Postcode)', alias: '邮', pos: 'm', example: '518000', description: '邮政编码数字' }
+    { id: '19', name: '商圈 (Business District)', alias: '圈', pos: 'n', example: '东门商圈', description: '商业聚集区域' },
+    { id: '20', name: '社区 (Community)', alias: '社', pos: 'n', example: '南园社区', description: '基层群众性自治组织区域' },
+    { id: '21', name: '地标 (Landmark)', alias: '标', pos: 'n', example: '东方明珠', description: '具有标志性的地理实体' },
+    { id: '22', name: 'POI分类 (POI Category)', alias: '类', pos: 'n', example: '酒店', description: 'POI的类别标签' },
+    { id: '23', name: '子区域 (Sub-area)', alias: '子', pos: 'n', example: '北区', description: '大区域内部的子划分' },
+    { id: '24', name: '邮编 (Postcode)', alias: '邮', pos: 'm', example: '518000', description: '邮政编码数字' }
   ];
 
   const initialApiConfig: ApiEndpointConfig = {
-    enabled: false,
+    enabled: true,
     method: 'POST',
-    url: '',
-    headers: '{\n  "Content-Type": "application/json"\n}',
-    bodyTemplate: '{\n  "text": "{{text}}"\n}',
-    responsePath: 'words'
+    url: 'http://ftsj-agent.sf-express.com/v1/workflows/run',
+    headers: '{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer app-aYWIqMIkqToonhPNA2FF1qCa"\n}',
+    bodyTemplate: '{\n    "inputs": {\n        "address": "{{text}}",\n        "adcode": "310000"\n    },\n    "response_mode": "blocking",\n    "user": "evaluator"\n}',
+    responsePath: 'data.outputs.out'
   };
 
   const initialEvalApiConfig: ApiEndpointConfig = {
@@ -73,7 +75,7 @@ const App: React.FC = () => {
     temperature: 0.2,
     evaluatorType: 'gemini',
     evaluatorApi: { ...initialEvalApiConfig },
-    granularityLevel: '18-level',
+    granularityLevel: '24-level',
     levelDefinitions: {
       '18-level': default18Level,
       '24-level': default24Level,
@@ -86,7 +88,7 @@ const App: React.FC = () => {
       consistency: 20
     },
     traditionalApi: { ...initialApiConfig },
-    mgeoApi: { ...initialApiConfig }
+    mgeoApi: { ...initialApiConfig, enabled: false }
   });
 
   const isBatch = useMemo(() => {
@@ -131,7 +133,7 @@ const App: React.FC = () => {
 
   const addDictionaryItem = () => {
     const current = aiConfig.levelDefinitions[aiConfig.granularityLevel];
-    handleDefinitionChange(aiConfig.granularityLevel, [...current, { id: `L${current.length + 1}`, name: '新层级名称', alias: '别名', pos: 'n', example: '示例', description: '说明文字' }]);
+    handleDefinitionChange(aiConfig.granularityLevel, [...current, { id: `${current.length + 1}`, name: '新层级名称', alias: '别名', pos: 'n', example: '示例', description: '说明文字' }]);
   };
 
   const removeDictionaryItem = (index: number) => {
@@ -139,9 +141,66 @@ const App: React.FC = () => {
     handleDefinitionChange(aiConfig.granularityLevel, current.filter((_, i) => i !== index));
   };
 
+  const handleDictionaryFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      try {
+        let importedData: LevelDefinition[] = [];
+        if (file.name.endsWith('.json')) {
+          importedData = JSON.parse(content);
+        } else if (file.name.endsWith('.csv')) {
+          const lines = content.split('\n');
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+          importedData = lines.slice(1).filter(l => l.trim()).map(line => {
+            const values = line.split(',');
+            const item: any = {};
+            headers.forEach((h, i) => {
+              item[h] = values[i]?.trim() || '';
+            });
+            return item as LevelDefinition;
+          });
+        }
+
+        if (Array.isArray(importedData)) {
+          handleDefinitionChange(aiConfig.granularityLevel, importedData);
+          alert(`成功导入 ${importedData.length} 条层级定义`);
+        } else {
+          throw new Error('无效的数据格式');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('文件解析失败，请检查格式是否正确。支持 JSON 数组或带标题行的 CSV (id,name,alias,pos,example,description)');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset for same file selection
+  };
+
+  const exportDictionary = () => {
+    const data = aiConfig.levelDefinitions[aiConfig.granularityLevel];
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `GeoLevel-Config-${aiConfig.granularityLevel}.json`;
+    a.click();
+  };
+
   const resolvePath = (obj: any, path: string) => {
     if (!path) return obj;
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+  };
+
+  const parseSpecialString = (str: string): ExternalWord[] => {
+    if (typeof str !== 'string' || !str.includes('^')) return [];
+    return str.split('|').filter(part => part.trim()).map(part => {
+      const [text, levelId] = part.split('^');
+      return { text, levelId: levelId || '' };
+    });
   };
 
   const callExternalApi = async (config: ApiEndpointConfig, text: string, payload?: any): Promise<any | undefined> => {
@@ -182,15 +241,27 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const externalResults: ExternalSegmentation[] = [];
-      if (aiConfig.traditionalApi.enabled || aiConfig.mgeoApi.enabled) {
-        for (const line of lines) {
-          const tradWords = await callExternalApi(aiConfig.traditionalApi, line);
-          const mgeoWords = await callExternalApi(aiConfig.mgeoApi, line);
+      
+      for (const line of lines) {
+        const result = await callExternalApi(aiConfig.traditionalApi, line);
+        
+        if (result && result.new && result.old) {
+          const newDetailed = parseSpecialString(result.new);
+          const oldDetailed = parseSpecialString(result.old);
+          
           externalResults.push({
             text: line,
-            traditionalWords: Array.isArray(tradWords) ? tradWords : undefined,
-            mgeoWords: Array.isArray(mgeoWords) ? mgeoWords : undefined
+            traditionalWords: oldDetailed.map(w => w.text),
+            mgeoWords: newDetailed.map(w => w.text),
+            traditionalDetailed: oldDetailed,
+            mgeoDetailed: newDetailed
           });
+        } else if (Array.isArray(result)) {
+           externalResults.push({
+             text: line,
+             traditionalWords: result,
+             mgeoWords: undefined
+           });
         }
       }
 
@@ -342,16 +413,16 @@ const App: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <ApiConfigCard 
                 type="traditionalApi" 
-                title="传统分词 (Baseline)" 
+                title="分词工作流接口 (New/Old 混合模式)" 
                 icon={Cpu} 
                 color="indigo" 
               />
-              <ApiConfigCard 
-                type="mgeoApi" 
-                title="MGeo 深度识别 (Engine)" 
-                icon={Zap} 
-                color="blue" 
-              />
+              <div className="bg-slate-100/50 p-6 rounded-3xl border border-dashed border-slate-200 flex items-center justify-center text-center">
+                 <p className="text-[10px] font-bold text-slate-400 leading-relaxed px-8 uppercase tracking-widest">
+                   当前逻辑已支持单个接口返回 new/old 两种切词结果并自动分拆对比。<br/><br/>
+                   支持 word^id|word^id 特殊格式解析。
+                 </p>
+              </div>
             </div>
           </div>
         );
@@ -479,10 +550,36 @@ const App: React.FC = () => {
       case 'dictionary':
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-            <div className="flex items-center gap-2 text-slate-800 mb-2">
-              <MapPin className="w-4 h-4 text-blue-500" />
-              <h2 className="text-xs font-black uppercase tracking-widest">分词粒度标准定义</h2>
+            <div className="flex justify-between items-end mb-2">
+              <div className="flex items-center gap-2 text-slate-800">
+                <MapPin className="w-4 h-4 text-blue-500" />
+                <h2 className="text-xs font-black uppercase tracking-widest">分词粒度标准定义</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="file" 
+                  ref={dictFileInputRef} 
+                  className="hidden" 
+                  accept=".json,.csv"
+                  onChange={handleDictionaryFileUpload} 
+                />
+                <button 
+                  onClick={() => dictFileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg hover:bg-blue-100 transition-all border border-blue-100"
+                >
+                  <FileUp className="w-3 h-3" />
+                  导入标准 (JSON/CSV)
+                </button>
+                <button 
+                  onClick={exportDictionary}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-600 text-[10px] font-black rounded-lg hover:bg-slate-100 transition-all border border-slate-200"
+                >
+                  <Download className="w-3 h-3" />
+                  导出标准
+                </button>
+              </div>
             </div>
+
             <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col h-[500px]">
               <div className="flex p-1 bg-slate-100 rounded-2xl gap-1 mb-2">
                 {(['18-level', '24-level', 'custom'] as GranularityLevel[]).map((level) => (
@@ -599,7 +696,6 @@ const App: React.FC = () => {
       {showSettings && (
         <section className="bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top duration-300">
            <div className="max-w-7xl mx-auto p-8 pt-6">
-             {/* Secondary Settings Tabs */}
              <div className="flex gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm w-fit mb-10 mx-auto">
                 <button 
                   onClick={() => setSettingsTab('interfaces')}
@@ -631,7 +727,6 @@ const App: React.FC = () => {
                 </button>
              </div>
 
-             {/* Tab Content Rendering */}
              <div className="min-h-[400px]">
                 {renderSettingsContent()}
              </div>
@@ -656,8 +751,8 @@ const App: React.FC = () => {
                    className="text-xs font-black bg-slate-100 border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all outline-none cursor-pointer"
                 >
                    <option value={ComparisonMode.BOTH}>分屏对比模式</option>
-                   <option value={ComparisonMode.TRADITIONAL_ONLY}>仅显示 Baseline</option>
-                   <option value={ComparisonMode.MGEO_ONLY}>仅显示 MGeo</option>
+                   <option value={ComparisonMode.TRADITIONAL_ONLY}>仅显示 Baseline (old)</option>
+                   <option value={ComparisonMode.MGEO_ONLY}>仅显示 MGeo (new)</option>
                 </select>
                 <div className="relative">
                   <input
@@ -690,9 +785,9 @@ const App: React.FC = () => {
                   <div className="px-4 py-1.5 bg-blue-50 rounded-full text-[10px] text-blue-600 font-black uppercase tracking-widest">
                     标准: {aiConfig.granularityLevel}
                   </div>
-                  {aiConfig.evaluatorType === 'external' && aiConfig.evaluatorApi.enabled && (
-                    <div className="px-4 py-1.5 bg-amber-50 rounded-full text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-2">
-                       <Server className="w-3 h-3" /> 自定义评测模式
+                  {aiConfig.traditionalApi.enabled && (
+                    <div className="px-4 py-1.5 bg-emerald-50 rounded-full text-[10px] text-emerald-600 font-black uppercase tracking-widest flex items-center gap-2">
+                       <Zap className="w-3 h-3" /> 工作流接口已载入
                     </div>
                   )}
                </div>
@@ -704,12 +799,12 @@ const App: React.FC = () => {
                 {loading ? (
                   <>
                     <Sparkles className="w-5 h-5 animate-spin" />
-                    正在执行跨引擎评测逻辑...
+                    正在请求工作流接口并执行对比评测...
                   </>
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    启动基准评测
+                    启动对比评测
                   </>
                 )}
               </button>
@@ -734,17 +829,17 @@ const App: React.FC = () => {
                    <div className="text-5xl font-black tabular-nums">{batchData.summary.totalItems}</div>
                 </div>
                 <div className="p-8 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md">
-                   <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-3">MGeo 均分</div>
+                   <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-3">New (MGeo) 均分</div>
                    <div className="text-5xl font-black tabular-nums text-emerald-400">{batchData.summary.mgeoAvgScore}</div>
                 </div>
                 <div className="p-8 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md">
-                   <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-3">传统均分</div>
+                   <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-3">Old (Traditional) 均分</div>
                    <div className="text-5xl font-black tabular-nums text-slate-300">{batchData.summary.traditionalAvgScore}</div>
                 </div>
                 <div className="md:col-span-1 flex flex-col justify-center bg-blue-600/10 p-8 rounded-3xl border border-blue-500/20">
                    <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2">
                      <BrainCircuit className="w-4 h-4" />
-                     跨引擎共性洞察
+                     跨版本性能洞察
                    </div>
                    <p className="text-sm text-slate-300 leading-relaxed font-bold italic line-clamp-5">
                      "{batchData.summary.keyInsights}"
@@ -811,9 +906,9 @@ const App: React.FC = () => {
                    <div className="flex items-center justify-between px-3">
                       <div className="flex items-center gap-3">
                         <div className="w-3.5 h-3.5 rounded-full bg-slate-300 shadow-inner" />
-                        <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">传统通用分词 (Baseline)</h2>
+                        <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">Old Version (Baseline)</h2>
                       </div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GEN-01 STANDARD</div>
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TRADITIONAL OUTPUT</div>
                    </div>
                    <div className="bg-white border border-slate-200 rounded-[2rem] p-10 min-h-[200px] shadow-sm flex flex-wrap content-start">
                      {currentResult.traditional.words.map((word, idx) => {
@@ -832,9 +927,9 @@ const App: React.FC = () => {
                    <div className="flex items-center justify-between px-3">
                       <div className="flex items-center gap-3">
                         <div className="w-3.5 h-3.5 rounded-full bg-blue-600 shadow-xl shadow-blue-100 animate-pulse" />
-                        <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">MGeo 深度地理识别 (Optimized)</h2>
+                        <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">New Version (MGeo)</h2>
                       </div>
-                      <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">MGEO-V2.5 ENGINE</div>
+                      <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">OPTIMIZED OUTPUT</div>
                    </div>
                    <div className="bg-white border border-blue-100 rounded-[2rem] p-10 min-h-[200px] shadow-sm shadow-blue-50/30 flex flex-wrap content-start">
                      {currentResult.mgeo.words.map((word, idx) => {
@@ -863,7 +958,7 @@ const App: React.FC = () => {
             </div>
             <div className="text-center space-y-3">
               <h3 className="text-3xl font-black text-slate-800 tracking-tight">基准评测引擎就绪</h3>
-              <p className="text-base font-bold text-slate-400 max-w-lg mx-auto leading-relaxed">配置您的自定义 REST API 评测引擎或使用内置 Gemini AI。支持 OpenAPI 规格，支持地理字典层级深度校验。</p>
+              <p className="text-base font-bold text-slate-400 max-w-lg mx-auto leading-relaxed">已载入分拣工作流接口。系统将自动解析 new/old 结果并映射字典层级 ID 进行深度交叉校验。</p>
             </div>
           </div>
         )}
@@ -875,7 +970,7 @@ const App: React.FC = () => {
               <div className="w-8 h-8 bg-slate-100 rounded-lg shadow-inner flex items-center justify-center">
                 <Layers className="w-4 h-4 text-slate-300" />
               </div>
-              <p>© 2024 MGEO EVALUATOR. 开放引擎与多级字典评测系统.</p>
+              <p>© 2024 MGEO EVALUATOR. 基于工作流与多级字典的自动化评测系统.</p>
            </div>
            <div className="flex gap-16">
              <a href="#" className="hover:text-blue-600 transition-colors">接入规格文档</a>

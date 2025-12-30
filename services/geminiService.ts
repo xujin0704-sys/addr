@@ -19,11 +19,23 @@ export const evaluateBatchSegmentation = async (
   // Prepare external results context for the prompt
   const externalContext = externalResults ? `
     以下是外部接口提供的初步分词结果（请优先评估这些结果）：
-    ${externalResults.map((res, i) => `
+    ${externalResults.map((res, i) => {
+      const tradDisplay = res.traditionalDetailed 
+        ? res.traditionalDetailed.map(w => `${w.text}^${w.levelId}`).join(' | ')
+        : (res.traditionalWords?.join(' | ') || '未提供');
+      
+      const mgeoDisplay = res.mgeoDetailed
+        ? res.mgeoDetailed.map(w => `${w.text}^${w.levelId}`).join(' | ')
+        : (res.mgeoWords?.join(' | ') || '未提供');
+
+      return `
       样本 ${i + 1}:
-      传统分词: ${res.traditionalWords?.join(' / ') || '未提供'}
-      MGeo分词: ${res.mgeoWords?.join(' / ') || '未提供'}
-    `).join('\n')}
+      传统分词 (old): ${tradDisplay}
+      MGeo分词 (new): ${mgeoDisplay}
+      `;
+    }).join('\n')}
+    
+    注意：外部结果中 "text^id" 格式的 id 对应字典定义中的“层级ID”。如果 id 为 18 或 24 等，请核对是否符合相应的层级定义。
   ` : '';
 
   const systemInstruction = `你是一位资深的中文 NLP 语言学家，专门从事地理空间实体识别 (Geo-NER)。你的任务是对一组文本进行“传统分词”与“MGeo 分词”的对比分析。
@@ -34,8 +46,8 @@ export const evaluateBatchSegmentation = async (
 
   重要要求：
   1. 如果提供了外部接口结果，请基于这些分词进行深入的语言学评估。
-  2. 如果外部结果缺失，请自行按照各自的逻辑进行分词（传统分词侧重通用，MGeo侧重地理层级）。
-  3. 对于 MGeo 分词，必须严格映射到上述字典中的层级标准，特别是考虑层级说明和示例。
+  2. 对于 MGeo 分词，必须严格映射到上述字典中的层级标准，特别是考虑层级说明和示例。
+  3. 如果外部结果中带有 ^id 标识，请验证该 ID 是否正确反映了其在字典中的层级（levelIndex）。
   4. levelIndex 属性应为该词语对应的层级在字典中的 1-based 索引。
   5. categoryName 属性应使用字典中该层级对应的“别名”。
   6. pos 属性应参考字典中建议的“词性”。
@@ -53,8 +65,7 @@ export const evaluateBatchSegmentation = async (
     要求：
     1. 为每条文本生成详细的分词对象列表（包含文本、词性、层级索引、别名、置信度）。
     2. 基于提供的详细字典标准，为每条文本的两种方法分别进行加权打分 (0-100)。
-    3. 如果外部分词结果中存在明显的切分错误（不符合定义的层级、词性或说明），请在报告中明确指出。
-    4. 汇总整个批量的表现，计算平均分并提供核心洞察。
+    3. 汇总整个批量的表现，计算平均分并提供核心洞察。
   `;
 
   const wordSchema = {
