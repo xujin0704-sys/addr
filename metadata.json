@@ -1,0 +1,5 @@
+{
+  "name": "MGeo 分词评测工具",
+  "description": "用于对比传统分词与 MGeo 中文分词的专业工具，支持 AI 自动评分与可视化分析。",
+  "requestFramePermissions": []
+}
